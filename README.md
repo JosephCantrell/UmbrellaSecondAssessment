@@ -5,9 +5,11 @@ Crediting: jholtmann - Original creater of this script
 
 This script takes a single column CSV file with a header and feeds the names to genderize.io. It outputs a CSV file with the name, gender, probability, and count of every name.
 
+I was tasked with modifying the original code by jholtmann to allow for a command line override for the default csv column for the first names that would be sent to the genderize API.
+
 ### Usage:
 ```sh
-python genderize.py [-h] -i INPUT -o OUTPUT [-k KEY] [-c] [-ns] [-nh]
+python genderize.py [-h] -i INPUT -o OUTPUT [-k KEY] [-c] [-nh] [-ovr]
 ```
 
 ```
@@ -17,6 +19,7 @@ optional arguments:
   -c, --catch           Try to handle errors gracefully
   -a, --auto            Automatically complete gender for identical names
   -nh, --noheader       Input has no header row
+  -ovr, --override		override the default search
 
 required arguments:
   -i INPUT, --input INPUT

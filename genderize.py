@@ -28,19 +28,18 @@ import jpyhelper as jpyh
 
 
 
-#def remove_dupes(list):
-#    return list(dict.fromkeys(list))
-    
-    
+# Created this function with the intention of having it used in multiple locations, but ended up only needed it in one.
+# This function iterates through a given list to find every value at the given position.
+# It then saves this position to a list, where we later pop the list item and return the list.
 def remove_dupes(list, search_column):
     names = []
-    removeList = []
+    remove_list = []
     for index, row in enumerate(list):
         stripped = row[search_column].strip()
         if stripped not in names:
             names.append(stripped)
         else:
-            removeList.append(index)
+            remove_list.append(index)
     
     # I know there is a better way to do this, but i could not pop items off of the list in the for loop above
     # without losing an item. A second "michael" was showing up in the final csv file. This method allowed me to get 
@@ -50,7 +49,7 @@ def remove_dupes(list, search_column):
         list.pop(remove - index)
     return list
 
-    
+# Created a function to write new headers into the csv file. Used in two locations.
 def write_headers(writer, original_headers):
     new_headers = ["gender", "probability", "count"]
     # Add the new headers on the tail end of our original headers list.
@@ -117,6 +116,7 @@ def genderize(args):
         column_number = -1
         # we are attempting to override the column that the names are stored in
         
+        # Easier to check a boolean than to constantly check if args.override is equal to 'NO_OVERRIDE'
         if args.override != 'NO_OVERRIDE':
             is_override = True
         
@@ -124,6 +124,7 @@ def genderize(args):
             # if we are overriding the search column
             if is_override:
                 # ugly nested mess but it works.
+                
                 # if we have not found the list position of the desired override column
                 if column_number == -1:
                     # get the first row from the reader (assumed to be the first row)
@@ -136,6 +137,10 @@ def genderize(args):
                         if column == args.override:
                             column_number = index
                             break
+                        # error detection if the user override is not found in the header of the input csv.
+                        if index == len(first_name[0])-1:
+                            print("User Override '" + args.override + "' not found in input CSV file, Exiting...")
+                            sys.exit()
                 # Our column number should be found by now, so continue to import the specific data that we want.
                 else:
                     # IMPORTANT: we need to remove all leading and trailing whitespaces to ensure that the genderizer responds with correct information
@@ -155,7 +160,9 @@ def genderize(args):
         # if we have a header, we need to remove it so it is not included in the submission
         if args.noheader == False:
             if is_override:
+                    # Before we pop the first list item in first_name, save it to be our original headers so we can write them later
                     original_headers = first_name[0]
+                    # We also need to pop the for item in the raw list or we will end up with extra data
                     raw.pop(0)
             first_name.pop(0) #Remove header
 
@@ -164,11 +171,15 @@ def genderize(args):
         # We dont need to strip the first name list if we are overriding because it has already been taken care of
         if is_override:
             o_first_name = first_name
+            
+            
+        # Removes the [''] on each list item so we just end up with names when iterating through the list
         else:
             for l in first_name:
                 for b in l:
                     o_first_name.append(b)
                     
+        # moved uniq_first_name outside of the if statement for later use.
         uniq_first_name = []
                     
         if args.auto == True:
@@ -176,7 +187,7 @@ def genderize(args):
             chunks = list(jpyh.splitlist(uniq_first_name, 10));
             print("--- Read CSV with " + str(len(first_name)) + " first_name. " + str(len(uniq_first_name)) + " unique.")
         else:
-            # splitting the name list into chunks of 10
+            # splitting the name list into chunks of 10 due to api restrictions
             chunks = list(jpyh.splitlist(first_name, 10));
             print("--- Read CSV with " + str(len(first_name)) + " first_name")
 
@@ -202,7 +213,7 @@ def genderize(args):
             
             writer = csv.writer(f)
             ## TODO Add new system to write all rows of the original file. Done
-            # If we are overriding, we need to do a different process
+            # If we are overriding, we need to write different headers into the output csv file. We call the write_headers function to keep the code clean
             if is_override:
                 write_headers(writer, original_headers)
             # else, continue as expected
@@ -248,37 +259,46 @@ def genderize(args):
             
             gender_dict = dict()
             
-            # Moved this function out of the autocomplete function to allow us to use it for the non-autocomplete
+            # Moved this function out of the autocomplete function to allow us to use it for the non-autocomplete writing as well
             for response in gender_responses:
                     for d in response:
                         gender_dict[d.get("name")] = [d.get("gender"), d.get("probability"), d.get("count")]
 
+            # we need to iterate over all of our "cleaned" first names 
             for index, name in enumerate(o_first_name):
                 data = gender_dict.get(name)
+                # If we are overriding, we need to print our raw data plus our genderize information.
                 if is_override:
                     data_list = [data[0], data[1], data[2]]
                     writer.writerow(raw[index] + data_list)
+                # If we are not overriding, we print the standard information
                 else:
                     writer.writerow([name, data[0], data[1], data[2]])      
 
             # if we have the autocomplete enabled, we need to allow overriding in this mode as well.
-
             if args.auto == True:
                 print("\nCompleting identical first_name...\n")
-
+                
                 filename, file_extension = os.path.splitext(ofile)
                 with open(filename, 'w', newline='', encoding="utf8") as f:
                     writer = csv.writer(f)
+                    # Before we enter the for loop, we need to print the correct headers into the output csv file.
+                    # If we are overriding, we need to print out saved original headers as well as the new headers. We call our write_headers function to keep the code clean
                     if is_override:
                         write_headers(writer, original_headers)
+                        # we need to remove duplicate items in our raw file for proper file writing.
                         raw_cleaned = remove_dupes(raw, column_number)
+                    # If we are not overriding, we can print the standard headers.
                     else:
                         writer.writerow(list(["first_name","gender", "probability", "count"]))
+                    # We need to iterate over our uniq_first_name list inorder to write the correct names
                     for index, name in enumerate(uniq_first_name):
+                        # If we are overriding, we need to combine the data recieved from the genderize api and combine it with our clean raw list inorder to write the correct information
                         if is_override:
                             data = gender_dict.get(name)
                             data_list = [data[0], data[1], data[2]]
                             writer.writerow(raw_cleaned[index] + data_list)
+                        # If we are not overriding, we can perform everything as expected.
                         else:
                             data = gender_dict.get(name)
                             writer.writerow([name, data[0], data[1], data[2]])
