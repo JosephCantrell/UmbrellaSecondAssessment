@@ -19,7 +19,7 @@ optional arguments:
   -c, --catch           Try to handle errors gracefully
   -a, --auto            Automatically complete gender for identical names
   -nh, --noheader       Input has no header row
-  -ovr, --override		override the default search
+  -ovr, --override	override the default search
 
 required arguments:
   -i INPUT, --input INPUT
